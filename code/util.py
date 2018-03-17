@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import OneHotEncoder
+
 
 def normalize_data(base):
 	if base[-1] != '/':
@@ -10,11 +10,11 @@ def normalize_data(base):
 	scaler = StandardScaler()
 	scaler.fit(data[:, :-1])
 	x_train = scaler.transform(data[:, :-1])
-	y_train = data[:, -1]
+	y_train = data[:, -1].astype(np.int)
 
 	data = np.loadtxt(base+'val.csv', np.str, delimiter=',')[1:, 1:].astype(np.float32)
 	x_val = scaler.transform(data[:, :-1])
-	y_val = data[:, -1]
+	y_val = data[:, -1].astype(np.int)
 
 	data = np.loadtxt(base+'test.csv', np.str, delimiter=',')[1:, 1:].astype(np.float32)
 	x_test = scaler.transform(data)
