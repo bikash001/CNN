@@ -14,7 +14,7 @@ from argparse import ArgumentParser
 
 # Custom Imports
 import tensorflow as tf
-
+from util import normalize_data
 
 """
 	Function to check if string is 1 or multiple of 5
@@ -49,19 +49,21 @@ def parse_cmd_args():
 """
 class CNN:
 
-	def __init__(self, lr, batch_size, init_method):
+	def __init__(self, lr, batch_size, init_method, save_dir, steps=100):
 		self.lr = lr
 		self.batch_size = batch_size
 		self.init_method = init_method
+		self.save_dir = save_dir
+		self.max_steps = steps
 
 
 	"""
 		Raw CNN API for Training, Validating and Testing 
 	"""
-	def model_fn(features, labels, mode):
+	def __model_fn(self, features, labels, mode):
 
 		# Input Layer
-		input_layer = tf.reshape(features, [-1, 28, 28, 1])
+		input_layer = tf.reshape(features['x'], [-1, 28, 28, 1])
 
 		# CONV1 Layer
 		conv1 = tf.layers.conv2d(
@@ -114,7 +116,7 @@ class CNN:
 			strides=2)
 
 		# Flatten Output
-		pool3_flat = tf.reshape(pool3, [-1, 4*4*256])
+		pool3_flat = tf.reshape(pool3, [-1, 3*3*256])
 
 		# FC1 Layer
 		fc1 = tf.layers.dense(
@@ -138,7 +140,7 @@ class CNN:
 
 		# Make predictions from model
 		predictions = {
-			"classes": tf.argmax(input=logits, axis=1)
+			"classes": tf.argmax(input=logits, axis=1),
 			"probabilities": tf.nn.softmax(logits, name='softmax_tensor')
 		}
 
@@ -153,7 +155,7 @@ class CNN:
 
 		# Train model
 		if mode == tf.estimator.ModeKeys.TRAIN:
-			optimizer = tf.train.GradientDescentOptimizer(learning_rate=)
+			optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.lr)
 			train_op = optimizer.minimize(
 				loss=loss,
 				global_step=tf.train.get_global_step())
@@ -168,10 +170,41 @@ class CNN:
 		return tf.estimator.EstimatorSpec(mode=mode, eval_metric_ops=eval_metric_ops)
 
 
-	def train():
-		pass
+	def train(self, X, Y):
+		classifier = tf.estimator.Estimator(model_fn=self.__model_fn,
+			model_dir=self.save_dir)
+
+		#logging
+		tensors_to_log = {"probabilities": "softmax_tensor"}
+		logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log,
+			every_n_iter=50)
+
+		#train model
+		train_input_fn = tf.estimator.inputs.numpy_input_fn(
+			x={'x': X}, y=Y, batch_size=self.batch_size,
+			num_epochs=None, shuffle=True)
+
+		classifier.train(input_fn=train_input_fn,
+			steps=self.max_steps, hooks=[logging_hook])
+
+		self.__classifier = classifier
+		return self
+
+	def predict(self, X, Y):
+		eval_input_fn = tf.estimator.inputs.numpy_input_fn(
+			x={'x': X},
+			y=Y,
+			num_epochs=1,
+			shuffle=False)
+
+		eval_results = self.__classifier.evaluate(input_fn=eval_input_fn)
+		return eval_results
+
 
 if __name__ == '__main__':
-
 	args = parse_cmd_args()
 
+	model = CNN(args.lr, args.batch_size, args.init, args.save_dir)
+	
+	train, val, test = normalize_data('../data/')
+	print model.train(*train).predict(*val)
