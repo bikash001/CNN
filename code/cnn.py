@@ -49,7 +49,7 @@ def parse_cmd_args():
 """
 class CNN:
 
-	def __init__(self, lr, batch_size, init_method, save_dir, steps=100):
+	def __init__(self, lr, batch_size, init_method, save_dir, steps=1000):
 		self.lr = lr
 		self.batch_size = batch_size
 		self.init_method = init_method
@@ -167,7 +167,7 @@ class CNN:
 				labels=labels,
 				predictions=predictions["classes"])
 		}
-		return tf.estimator.EstimatorSpec(mode=mode, eval_metric_ops=eval_metric_ops)
+		return tf.estimator.EstimatorSpec(mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
 
 
 	def train(self, X, Y):
@@ -204,7 +204,13 @@ class CNN:
 if __name__ == '__main__':
 	args = parse_cmd_args()
 
-	model = CNN(args.lr, args.batch_size, args.init, args.save_dir)
+	model = CNN(args.lr, args.batch_size, args.init, args.save_dir, 100)
 	
 	train, val, test = normalize_data('../data/')
-	print model.train(*train).predict(*val)
+
+	print 'train:', model.train(*train).predict(*train)
+	print 'val:', model.predict(*val)
+
+	saver = tf.train.Saver()
+	saver.save(tf.get_default_session(), 'model.ckpt')
+
