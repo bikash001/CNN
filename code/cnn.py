@@ -49,12 +49,13 @@ def parse_cmd_args():
 """
 class CNN:
 
-	def __init__(self, lr, batch_size, init_method, save_dir, steps=1000):
+	def __init__(self, lr, batch_size, init_method, save_dir, initializer, steps=1000):
 		self.lr = lr
 		self.batch_size = batch_size
 		self.init_method = init_method
 		self.save_dir = save_dir
 		self.max_steps = steps
+		self.kernel_initializer = initializer
 
 
 	"""
@@ -71,7 +72,8 @@ class CNN:
 			filters=64,
 			kernel_size=[3,3],
 			padding="same",
-			activation=tf.nn.relu)
+			activation=tf.nn.relu,
+			kernel_initializer=self.kernel_initializer)
 
 		# POOL1 Layer
 		pool1 = tf.layers.max_pooling2d(
@@ -85,7 +87,8 @@ class CNN:
 			filters=128,
 			kernel_size=[3,3],
 			padding="same",
-			activation=tf.nn.relu)
+			activation=tf.nn.relu,
+			kernel_initializer=self.kernel_initializer)
 
 		# POOL2 Layer
 		pool2 = tf.layers.max_pooling2d(
@@ -99,7 +102,8 @@ class CNN:
 			filters=256,
 			kernel_size=[3,3],
 			padding="same",
-			activation=tf.nn.relu)
+			activation=tf.nn.relu,
+			kernel_initializer=self.kernel_initializer)
 
 		# CONV4 Layer
 		conv4 = tf.layers.conv2d(
@@ -107,7 +111,8 @@ class CNN:
 			filters=256,
 			kernel_size=[3,3],
 			padding="same",
-			activation=tf.nn.relu)
+			activation=tf.nn.relu,
+			kernel_initializer=self.kernel_initializer)
 
 		# POOL3 Layer
 		pool3 = tf.layers.max_pooling2d(
@@ -122,21 +127,27 @@ class CNN:
 		fc1 = tf.layers.dense(
 			inputs=pool3_flat,
 			units=1024,
-			activation=tf.nn.relu)
+			activation=tf.nn.relu,
+			kernel_initializer=self.kernel_initializer)
 
 		# FC2 Layer
 		fc2 = tf.layers.dense(
 			inputs=fc1,
 			units=1024,
-			activation=tf.nn.relu)
+			activation=tf.nn.relu,
+			kernel_initializer=self.kernel_initializer)
 
 		# Batch Normalization Layer
-		bn = fc2
+		# bn = fc2
+		bn = tf.layers.batch_normalization(
+			inputs=fc2,
+			training=(mode == tf.estimator.ModeKeys.TRAIN))
 
 		# SOFTMAX Layer
 		logits = tf.layers.dense(
 			inputs=bn,
-			units=10)
+			units=10,
+			kernel_initializer=self.kernel_initializer)
 
 		# Make predictions from model
 		predictions = {
@@ -204,7 +215,12 @@ class CNN:
 if __name__ == '__main__':
 	args = parse_cmd_args()
 
-	model = CNN(args.lr, args.batch_size, args.init, args.save_dir, 100)
+	if args.init == 1:
+		initializer = tf.keras.initializers.glorot_normal
+	else:
+		initializer = tf.keras.initializers.he_normal
+
+	model = CNN(args.lr, args.batch_size, args.init, args.save_dir, initializer, 100)
 	
 	train, val, test = normalize_data('../data/')
 
