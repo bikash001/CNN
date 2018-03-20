@@ -181,7 +181,7 @@ class CNN:
 		return tf.estimator.EstimatorSpec(mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
 
 
-	def init_model():
+	def init_model(self):
 		classifier = tf.estimator.Estimator(model_fn=self.__model_fn,
 			model_dir=self.save_dir)
 		self.__classifier = classifier
@@ -234,8 +234,10 @@ if __name__ == '__main__':
 	LOAD = False
 	if not LOAD:
 		with tf.Session() as session:			
-			print ('train: %f' % model.train(*train).predict(*train))
-			print ('val: %f' % model.predict(*val))
+			print ('train:')
+			print (model.train(*train).predict(*train))
+			print ('val:')
+			print (model.predict(*val))
 
 			saver = tf.train.Saver()
 			saver.save(session, './model.ckpt')
