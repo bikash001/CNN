@@ -221,8 +221,8 @@ if __name__ == '__main__':
 	else:
 		initializer = tf.keras.initializers.he_normal
 
-	saver = tf.train.Saver()
 	train, val, test = normalize_data('../data/')
+	print("Data Normalization Complete!")
 
 	LOAD = False
 
@@ -234,9 +234,11 @@ if __name__ == '__main__':
 			print ('train: %f' % model.train(*train).predict(*train))
 			print ('val: %f' % model.predict(*val))
 
+			saver = tf.train.Saver()
 			saver.save(session, './model.ckpt')
 	else:
 		with tf.Session() as session:
 			model = CNN(args.lr, args.batch_size, args.init, args.save_dir, initializer, 100)
+			saver = tf.train.Saver()
 			saver.restore(session, './model.ckpt')
 			print ('val: %f' % model.predict(*val))
