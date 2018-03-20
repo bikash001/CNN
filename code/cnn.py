@@ -181,13 +181,9 @@ class CNN:
 		return tf.estimator.EstimatorSpec(mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
 
 
-	def init_model(self):
+	def train(self, X, Y):
 		classifier = tf.estimator.Estimator(model_fn=self.__model_fn,
 			model_dir=self.save_dir)
-		self.__classifier = classifier
-		
-
-	def train(self, X, Y):
 
 		#logging
 		tensors_to_log = {"probabilities": "softmax_tensor"}
@@ -199,10 +195,12 @@ class CNN:
 			x={'x': X}, y=Y, batch_size=self.batch_size,
 			num_epochs=None, shuffle=True)
 
-		self.__classifier.train(input_fn=train_input_fn,
+		classifier.train(input_fn=train_input_fn,
 			steps=self.max_steps, hooks=[logging_hook])
 
+		self.__classifier = classifier
 		return self
+
 
 	def predict(self, X, Y):
 		eval_input_fn = tf.estimator.inputs.numpy_input_fn(
@@ -213,6 +211,11 @@ class CNN:
 
 		eval_results = self.__classifier.evaluate(input_fn=eval_input_fn)
 		return eval_results
+
+
+	def save_model(self, dir):
+		feature_spec = {'x': tf.FixedLenFeature([], tf.float32)}	
+		self.__classifier.export_savedmodel(self.save_dir, serving_input_fn=tf.contrib.learn.build_parsing_serving_input_fn(feature_spec))
 
 
 if __name__ == '__main__':
@@ -229,21 +232,14 @@ if __name__ == '__main__':
 	print("Data Normalization Complete!")
 
 	model = CNN(args.lr, args.batch_size, args.init, args.save_dir, initializer, 100)
-	model.init_model()
 
 	LOAD = False
 	if not LOAD:
-		with tf.Session() as session:			
-			print ('train:')
-			print (model.train(*train).predict(*train))
-			print ('val:')
-			print (model.predict(*val))
+		print ('train:')
+		print (model.train(*train).predict(*train))
+		print ('val:')
+		print (model.predict(*val))
 
-			saver = tf.train.Saver()
-			saver.save(session, './model.ckpt')
+		model.save_model()
 	else:
-		with tf.Session() as session:
-			saver = tf.train.Saver()
-			saver.restore(session, './model.ckpt')
-
-			print ('val: %f' % model.predict(*val))
+		print ('val: %f' % model.predict(*val))
