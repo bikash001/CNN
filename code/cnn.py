@@ -213,6 +213,7 @@ class CNN:
 
 
 if __name__ == '__main__':
+
 	args = parse_cmd_args()
 
 	if args.init == 1:
@@ -220,13 +221,22 @@ if __name__ == '__main__':
 	else:
 		initializer = tf.keras.initializers.he_normal
 
-	model = CNN(args.lr, args.batch_size, args.init, args.save_dir, initializer, 100)
-	
+	saver = tf.train.Saver()
 	train, val, test = normalize_data('../data/')
 
-	print 'train:', model.train(*train).predict(*train)
-	print 'val:', model.predict(*val)
+	LOAD = False
 
-	saver = tf.train.Saver()
-	saver.save(tf.get_default_session(), 'model.ckpt')
+	if not LOAD:
+		with tf.Session() as session:
+				
+			model = CNN(args.lr, args.batch_size, args.init, args.save_dir, initializer, 100)
+			
+			print 'train:', model.train(*train).predict(*train)
+			print 'val:', model.predict(*val)
 
+			saver.save(session, './model.ckpt')
+	else:
+		with tf.Session() as session:
+			model = CNN(args.lr, args.batch_size, args.init, args.save_dir, initializer, 100)
+			saver.restore(session, './model.ckpt')
+			print 'val:', model.predict(*val)
