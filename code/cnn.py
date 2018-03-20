@@ -181,9 +181,13 @@ class CNN:
 		return tf.estimator.EstimatorSpec(mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
 
 
-	def train(self, X, Y):
+	def init_model():
 		classifier = tf.estimator.Estimator(model_fn=self.__model_fn,
 			model_dir=self.save_dir)
+		self.__classifier = classifier
+		
+
+	def train(self, X, Y):
 
 		#logging
 		tensors_to_log = {"probabilities": "softmax_tensor"}
@@ -195,10 +199,9 @@ class CNN:
 			x={'x': X}, y=Y, batch_size=self.batch_size,
 			num_epochs=None, shuffle=True)
 
-		classifier.train(input_fn=train_input_fn,
+		self.__classifier.train(input_fn=train_input_fn,
 			steps=self.max_steps, hooks=[logging_hook])
 
-		self.__classifier = classifier
 		return self
 
 	def predict(self, X, Y):
@@ -216,15 +219,17 @@ if __name__ == '__main__':
 
 	args = parse_cmd_args()
 
-	if args.init == 1:
-		initializer = tf.keras.initializers.glorot_normal
-	else:
-		initializer = tf.keras.initializers.he_normal
+	# if args.init == 1:
+	# 	initializer = tf.keras.initializers.glorot_normal
+	# else:
+	# 	initializer = tf.keras.initializers.he_normal
+	initializer = None
 
 	train, val, test = normalize_data('../data/')
 	print("Data Normalization Complete!")
 
 	model = CNN(args.lr, args.batch_size, args.init, args.save_dir, initializer, 100)
+	model.init_model()
 
 	LOAD = False
 	if not LOAD:
