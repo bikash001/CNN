@@ -231,12 +231,12 @@ if __name__ == '__main__':
 				
 			model = CNN(args.lr, args.batch_size, args.init, args.save_dir, initializer, 100)
 			
-			print 'train:', model.train(*train).predict(*train)
-			print 'val:', model.predict(*val)
+			print ('train: %f' % model.train(*train).predict(*train))
+			print ('val: %f' % model.predict(*val))
 
 			saver.save(session, './model.ckpt')
 	else:
 		with tf.Session() as session:
 			model = CNN(args.lr, args.batch_size, args.init, args.save_dir, initializer, 100)
 			saver.restore(session, './model.ckpt')
-			print 'val:', model.predict(*val)
+			print ('val: %f' % model.predict(*val))
