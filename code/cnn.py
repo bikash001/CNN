@@ -49,13 +49,18 @@ def parse_cmd_args():
 """
 class CNN:
 
-	def __init__(self, lr, batch_size, init_method, save_dir, initializer, steps=1000):
+	def __init__(self, lr=0.001, batch_size=20, init_method=1, save_dir=None, steps=1000):
 		self.lr = lr
 		self.batch_size = batch_size
 		self.init_method = init_method
 		self.save_dir = save_dir
 		self.max_steps = steps
-		self.kernel_initializer = initializer
+
+		self.kernel_initializer = None
+		# if self.init_method == 1:
+		# 	self.kernel_initializer = tf.glorot_normal_initializer
+		# else:
+		# 	self.kernel_initializer = tf.keras.initializers.he_normal
 
 
 	"""
@@ -166,7 +171,7 @@ class CNN:
 
 		# Train model
 		if mode == tf.estimator.ModeKeys.TRAIN:
-			optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.lr)
+			optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
 			train_op = optimizer.minimize(
 				loss=loss,
 				global_step=tf.train.get_global_step())
@@ -206,19 +211,6 @@ class CNN:
 		classifier = tf.estimator.Estimator(model_fn=self.__model_fn,
 			model_dir=self.save_dir, warm_start_from='../model/')
 
-		#logging
-		tensors_to_log = {"probabilities": "softmax_tensor"}
-		logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log,
-			every_n_iter=50)
-
-		#train model
-		# train_input_fn = tf.estimator.inputs.numpy_input_fn(
-		# 	x={'x': X}, y=Y, batch_size=self.batch_size,
-		# 	num_epochs=None, shuffle=True)
-
-		# classifier.train(input_fn=train_input_fn,
-		# 	steps=self.max_steps, hooks=[logging_hook])
-
 		self.__classifier = classifier
 		return self
 
@@ -234,20 +226,15 @@ class CNN:
 		return eval_results
 
 
-	def save_model(self, dir):
-		feature_spec = {'x': tf.FixedLenFeature([], tf.float32)}	
-		self.__classifier.export_savedmodel(self.save_dir, serving_input_fn=tf.contrib.learn.build_parsing_serving_input_fn(feature_spec))
-
-
 if __name__ == '__main__':
 
 	args = parse_cmd_args()
 
-	model = CNN(args.lr, args.batch_size, args.init, args.save_dir, 1000)
+	model = CNN(args.lr, args.batch_size, args.init, args.save_dir,  20000)
 	
-	# train, val, test = normalize_data('../data/')
+	train, val, test = normalize_data('../data/', True)
 
-	model.run_save()
-	val = normalize_data('../data/', '../data/val.csv')
-	# print 'train:', model.train(*train).predict(*train)
+	# model.run_save()
+	# val = normalize_data('../data/', '../data/val.csv')
+	print 'train:', model.fit(*train).predict(*train)
 	print 'val:', model.predict(*val)
