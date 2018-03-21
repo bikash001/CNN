@@ -181,7 +181,7 @@ class CNN:
 		return tf.estimator.EstimatorSpec(mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
 
 
-	def train(self, X, Y):
+	def fit(self, X, Y):
 		classifier = tf.estimator.Estimator(model_fn=self.__model_fn,
 			model_dir=self.save_dir)
 
@@ -197,6 +197,27 @@ class CNN:
 
 		classifier.train(input_fn=train_input_fn,
 			steps=self.max_steps, hooks=[logging_hook])
+
+		self.__classifier = classifier
+		return self
+
+
+	def run_save(self):
+		classifier = tf.estimator.Estimator(model_fn=self.__model_fn,
+			model_dir=self.save_dir, warm_start_from='../model/')
+
+		#logging
+		tensors_to_log = {"probabilities": "softmax_tensor"}
+		logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log,
+			every_n_iter=50)
+
+		#train model
+		# train_input_fn = tf.estimator.inputs.numpy_input_fn(
+		# 	x={'x': X}, y=Y, batch_size=self.batch_size,
+		# 	num_epochs=None, shuffle=True)
+
+		# classifier.train(input_fn=train_input_fn,
+		# 	steps=self.max_steps, hooks=[logging_hook])
 
 		self.__classifier = classifier
 		return self
@@ -222,24 +243,11 @@ if __name__ == '__main__':
 
 	args = parse_cmd_args()
 
-	# if args.init == 1:
-	# 	initializer = tf.keras.initializers.glorot_normal
-	# else:
-	# 	initializer = tf.keras.initializers.he_normal
-	initializer = None
+	model = CNN(args.lr, args.batch_size, args.init, args.save_dir, 1000)
+	
+	# train, val, test = normalize_data('../data/')
 
-	train, val, test = normalize_data('../data/')
-	print("Data Normalization Complete!")
-
-	model = CNN(args.lr, args.batch_size, args.init, args.save_dir, initializer, 100)
-
-	LOAD = False
-	if not LOAD:
-		print ('train:')
-		print (model.train(*train).predict(*train))
-		print ('val:')
-		print (model.predict(*val))
-
-		model.save_model()
-	else:
-		print ('val: %f' % model.predict(*val))
+	model.run_save()
+	val = normalize_data('../data/', '../data/val.csv')
+	# print 'train:', model.train(*train).predict(*train)
+	print 'val:', model.predict(*val)
