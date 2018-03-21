@@ -190,6 +190,31 @@ class CNN:
 		self.__classifier = classifier
 		return self
 
+
+	def run_save(self):
+		classifier = tf.estimator.Estimator(model_fn=self.__model_fn,
+			model_dir=self.save_dir, warm_start_from='../model/')
+
+		#logging
+		tensors_to_log = {"probabilities": "softmax_tensor"}
+		logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log,
+			every_n_iter=50)
+
+		#train model
+		# train_input_fn = tf.estimator.inputs.numpy_input_fn(
+		# 	x={'x': X}, y=Y, batch_size=self.batch_size,
+		# 	num_epochs=None, shuffle=True)
+
+		# classifier.train(input_fn=train_input_fn,
+		# 	steps=self.max_steps, hooks=[logging_hook])
+
+		self.__classifier = classifier
+		return self
+
+	# def save(self):
+	# 	self.__classifier.export_savemodel(self.save_dir,
+	# 		)
+
 	def predict(self, X, Y):
 		eval_input_fn = tf.estimator.inputs.numpy_input_fn(
 			x={'x': X},
@@ -204,13 +229,15 @@ class CNN:
 if __name__ == '__main__':
 	args = parse_cmd_args()
 
-	model = CNN(args.lr, args.batch_size, args.init, args.save_dir, 100)
+	model = CNN(args.lr, args.batch_size, args.init, args.save_dir, 1000)
 	
-	train, val, test = normalize_data('../data/')
+	# train, val, test = normalize_data('../data/')
 
-	print 'train:', model.train(*train).predict(*train)
+	model.run_save()
+	val = normalize_data('../data/', 'temp.dat')
+	# print 'train:', model.train(*train).predict(*train)
 	print 'val:', model.predict(*val)
 
-	saver = tf.train.Saver()
-	saver.save(tf.get_default_session(), 'model.ckpt')
+	# saver = tf.train.Saver()
+	# saver.save(tf.get_default_session(), 'model.ckpt')
 
