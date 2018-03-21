@@ -115,7 +115,6 @@ if __name__ == '__main__':
 		x = np.reshape(x_val[i], (1,1,28,28))
 		x = torch.from_numpy(x)
 		pred = net(Variable(x))
-		# print pred.data.cpu().numpy()
 		pred = pred.data.cpu().numpy()
 		if np.argmax(pred) == y_val[i]:
 			correct += 1
