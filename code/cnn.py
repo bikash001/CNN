@@ -57,10 +57,11 @@ class CNN:
 		self.max_steps = steps
 
 		self.kernel_initializer = None
-		# if self.init_method == 1:
-		# 	self.kernel_initializer = tf.glorot_normal_initializer
-		# else:
-		# 	self.kernel_initializer = tf.keras.initializers.he_normal
+		if self.init_method == 1:
+			self.kernel_initializer = tf.contrib.layers.xavier_initializer(uniform=False)
+		else:
+			self.kernel_initializer = tf.contrib.layers.variance_scaling_initializer(mode="FAN_AVG")
+
 
 
 	"""
@@ -232,9 +233,9 @@ if __name__ == '__main__':
 
 	model = CNN(args.lr, args.batch_size, args.init, args.save_dir,  20000)
 	
-	train, val, test = normalize_data('../data/', True)
+	train, val, test = normalize_data('../data/', False)
 
 	# model.run_save()
 	# val = normalize_data('../data/', '../data/val.csv')
-	print 'train:', model.fit(*train).predict(*train)
-	print 'val:', model.predict(*val)
+	print (model.fit(*train).predict(*train))
+	print (model.predict(*val))
