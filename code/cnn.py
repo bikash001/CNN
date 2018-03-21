@@ -49,12 +49,13 @@ def parse_cmd_args():
 """
 class CNN:
 
-	def __init__(self, lr, batch_size, init_method, save_dir, steps=1000):
+	def __init__(self, lr, batch_size, init_method, save_dir, initializer, steps=1000):
 		self.lr = lr
 		self.batch_size = batch_size
 		self.init_method = init_method
 		self.save_dir = save_dir
 		self.max_steps = steps
+		self.kernel_initializer = initializer
 
 
 	"""
@@ -71,7 +72,8 @@ class CNN:
 			filters=64,
 			kernel_size=[3,3],
 			padding="same",
-			activation=tf.nn.relu)
+			activation=tf.nn.relu,
+			kernel_initializer=self.kernel_initializer)
 
 		# POOL1 Layer
 		pool1 = tf.layers.max_pooling2d(
@@ -85,7 +87,8 @@ class CNN:
 			filters=128,
 			kernel_size=[3,3],
 			padding="same",
-			activation=tf.nn.relu)
+			activation=tf.nn.relu,
+			kernel_initializer=self.kernel_initializer)
 
 		# POOL2 Layer
 		pool2 = tf.layers.max_pooling2d(
@@ -99,7 +102,8 @@ class CNN:
 			filters=256,
 			kernel_size=[3,3],
 			padding="same",
-			activation=tf.nn.relu)
+			activation=tf.nn.relu,
+			kernel_initializer=self.kernel_initializer)
 
 		# CONV4 Layer
 		conv4 = tf.layers.conv2d(
@@ -107,7 +111,8 @@ class CNN:
 			filters=256,
 			kernel_size=[3,3],
 			padding="same",
-			activation=tf.nn.relu)
+			activation=tf.nn.relu,
+			kernel_initializer=self.kernel_initializer)
 
 		# POOL3 Layer
 		pool3 = tf.layers.max_pooling2d(
@@ -122,21 +127,27 @@ class CNN:
 		fc1 = tf.layers.dense(
 			inputs=pool3_flat,
 			units=1024,
-			activation=tf.nn.relu)
+			activation=tf.nn.relu,
+			kernel_initializer=self.kernel_initializer)
 
 		# FC2 Layer
 		fc2 = tf.layers.dense(
 			inputs=fc1,
 			units=1024,
-			activation=tf.nn.relu)
+			activation=tf.nn.relu,
+			kernel_initializer=self.kernel_initializer)
 
 		# Batch Normalization Layer
-		bn = fc2
+		# bn = fc2
+		bn = tf.layers.batch_normalization(
+			inputs=fc2,
+			training=(mode == tf.estimator.ModeKeys.TRAIN))
 
 		# SOFTMAX Layer
 		logits = tf.layers.dense(
 			inputs=bn,
-			units=10)
+			units=10,
+			kernel_initializer=self.kernel_initializer)
 
 		# Make predictions from model
 		predictions = {
@@ -170,7 +181,7 @@ class CNN:
 		return tf.estimator.EstimatorSpec(mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
 
 
-	def train(self, X, Y):
+	def fit(self, X, Y):
 		classifier = tf.estimator.Estimator(model_fn=self.__model_fn,
 			model_dir=self.save_dir)
 
@@ -211,9 +222,6 @@ class CNN:
 		self.__classifier = classifier
 		return self
 
-	# def save(self):
-	# 	self.__classifier.export_savemodel(self.save_dir,
-	# 		)
 
 	def predict(self, X, Y):
 		eval_input_fn = tf.estimator.inputs.numpy_input_fn(
@@ -226,7 +234,13 @@ class CNN:
 		return eval_results
 
 
+	def save_model(self, dir):
+		feature_spec = {'x': tf.FixedLenFeature([], tf.float32)}	
+		self.__classifier.export_savedmodel(self.save_dir, serving_input_fn=tf.contrib.learn.build_parsing_serving_input_fn(feature_spec))
+
+
 if __name__ == '__main__':
+
 	args = parse_cmd_args()
 
 	model = CNN(args.lr, args.batch_size, args.init, args.save_dir, 1000)
@@ -234,10 +248,6 @@ if __name__ == '__main__':
 	# train, val, test = normalize_data('../data/')
 
 	model.run_save()
-	val = normalize_data('../data/', 'temp.dat')
+	val = normalize_data('../data/', '../data/val.csv')
 	# print 'train:', model.train(*train).predict(*train)
 	print 'val:', model.predict(*val)
-
-	# saver = tf.train.Saver()
-	# saver.save(tf.get_default_session(), 'model.ckpt')
-
