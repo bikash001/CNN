@@ -55,8 +55,7 @@ class CNN:
 		self.init_method = init_method
 		self.save_dir = save_dir
 		self.max_steps = steps
-
-		self.kernel_initializer = None
+		self.apply_dropout = True
 		if self.init_method == 1:
 			self.kernel_initializer = tf.contrib.layers.xavier_initializer(uniform=False)
 		else:
@@ -68,6 +67,7 @@ class CNN:
 		Raw CNN API for Training, Validating and Testing 
 	"""
 	def __model_fn(self, features, labels, mode):
+		# print "inside model function"
 
 		# Input Layer
 		input_layer = tf.reshape(features['x'], [-1, 28, 28, 1])
@@ -136,17 +136,25 @@ class CNN:
 			activation=tf.nn.relu,
 			kernel_initializer=self.kernel_initializer)
 
+		do1 = tf.layers.dropout(
+			inputs=fc1,
+			training=self.apply_dropout)
+
 		# FC2 Layer
 		fc2 = tf.layers.dense(
-			inputs=fc1,
+			inputs=do1,
 			units=1024,
 			activation=tf.nn.relu,
 			kernel_initializer=self.kernel_initializer)
 
+		do2 = tf.layers.dropout(
+			inputs=fc2,
+			training=self.apply_dropout)
+
 		# Batch Normalization Layer
 		# bn = fc2
 		bn = tf.layers.batch_normalization(
-			inputs=fc2,
+			inputs=do2,
 			training=(mode == tf.estimator.ModeKeys.TRAIN))
 
 		# SOFTMAX Layer
@@ -188,6 +196,7 @@ class CNN:
 
 
 	def fit(self, X, Y):
+		self.apply_dropout = True
 		classifier = tf.estimator.Estimator(model_fn=self.__model_fn,
 			model_dir=self.save_dir)
 
@@ -216,6 +225,7 @@ class CNN:
 		return self
 
 	def predict(self, X):
+		self.apply_dropout = False
 		pr_input_fn = tf.estimator.inputs.numpy_input_fn(
 			x={'x': X},
 			shuffle=False)
@@ -224,6 +234,7 @@ class CNN:
 		return [x['classes'] for x in eval_results]
 
 	def accuracy(self, X, Y):
+		self.apply_dropout = False
 		eval_input_fn = tf.estimator.inputs.numpy_input_fn(
 			x={'x': X},
 			y=Y,
@@ -238,16 +249,16 @@ if __name__ == '__main__':
 
 	args = parse_cmd_args()
 
-	model = CNN(args.lr, args.batch_size, args.init, args.save_dir,  50000)
+	model = CNN(args.lr, args.batch_size, args.init, args.save_dir,  30000)
 	
-	train, val, test = normalize_data('../data/', False)
+	train, val, test = normalize_data('../data/', scaled=True)
 
 	# model.run_save()
-	# val = normalize_data('../data/', '../data/val.csv')
+	# val = normalize_data('../data/', scaled=True, file='../data/val.csv')
 	print 'train:', model.fit(*train).accuracy(*train)
 	print 'val:', model.accuracy(*val)
-	val = normalize_data('../data/', True, '../data/test.csv', True)
-	rs = model.predict(val)
+	# test = normalize_data('../data/', True, '../data/test.csv', True)
+	rs = model.predict(test)
 	with open('../data/result.csv', 'w') as fp:
 		print >> fp, 'id,label'
 		for i, x in enumerate(rs):
