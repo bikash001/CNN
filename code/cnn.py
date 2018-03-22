@@ -92,7 +92,7 @@ class CNN:
 			inputs= pool1,
 			filters=128,
 			kernel_size=[3,3],
-			padding="same",
+			padding="valid",
 			activation=tf.nn.relu,
 			kernel_initializer=self.kernel_initializer)
 
