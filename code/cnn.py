@@ -49,13 +49,13 @@ def parse_cmd_args():
 """
 class CNN:
 
-	def __init__(self, lr=0.001, batch_size=20, init_method=1, save_dir=None, steps=1000):
+	def __init__(self, lr=0.001, batch_size=20, init_method=1, save_dir=None, steps=1000, dropout=True):
 		self.lr = lr
 		self.batch_size = batch_size
 		self.init_method = init_method
 		self.save_dir = save_dir
 		self.max_steps = steps
-		self.apply_dropout = True
+		self.apply_dropout = dropout
 		if self.init_method == 1:
 			self.kernel_initializer = tf.contrib.layers.xavier_initializer(uniform=False)
 		else:
@@ -196,7 +196,6 @@ class CNN:
 
 
 	def fit(self, X, Y):
-		self.apply_dropout = True
 		classifier = tf.estimator.Estimator(model_fn=self.__model_fn,
 			model_dir=self.save_dir)
 
