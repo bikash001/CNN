@@ -3,7 +3,7 @@ from sklearn.preprocessing import StandardScaler
 import pickle
 
 
-def normalize_data(base, scaled=False, file=None):
+def normalize_data(base, scaled=False, file=None, test=False):
 	if base[-1] != '/':
 		base += '/'
 
@@ -11,10 +11,15 @@ def normalize_data(base, scaled=False, file=None):
 		with open('scaler.pkl', 'rb') as fp:
 			scaler = pickle.load(fp)
 
-		data = np.loadtxt(file, np.str, delimiter=',')[1:, 1:].astype(np.float32)
-		x_val = scaler.transform(data[:, :-1])
-		y_val = data[:, -1].astype(np.int)
-		return x_val, y_val
+		if test:
+			data = np.loadtxt(file, np.str, delimiter=',')[1:, 1:].astype(np.float32)
+			x_test = scaler.transform(data)
+			return x_test
+		else:
+			data = np.loadtxt(file, np.str, delimiter=',')[1:, 1:].astype(np.float32)
+			x_val = scaler.transform(data[:, :-1])
+			y_val = data[:, -1].astype(np.int)
+			return x_val, y_val
 
 	else:
 		if scaled:
