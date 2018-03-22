@@ -81,7 +81,7 @@ class Net(nn.Module):
 			nf *= s
 		return nf
 
-
+		
 if __name__ == '__main__':
 
 	args = parse_cmd_args()
