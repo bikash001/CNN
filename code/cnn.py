@@ -57,10 +57,11 @@ class CNN:
 		self.max_steps = steps
 
 		self.kernel_initializer = None
-		# if self.init_method == 1:
-		# 	self.kernel_initializer = tf.glorot_normal_initializer
-		# else:
-		# 	self.kernel_initializer = tf.keras.initializers.he_normal
+		if self.init_method == 1:
+			self.kernel_initializer = tf.contrib.layers.xavier_initializer(uniform=False)
+		else:
+			self.kernel_initializer = tf.contrib.layers.variance_scaling_initializer(mode="FAN_AVG")
+
 
 
 	"""
@@ -214,8 +215,15 @@ class CNN:
 		self.__classifier = classifier
 		return self
 
+	def predict(self, X):
+		pr_input_fn = tf.estimator.inputs.numpy_input_fn(
+			x={'x': X},
+			shuffle=False)
 
-	def predict(self, X, Y):
+		eval_results = self.__classifier.predict(input_fn=pr_input_fn)
+		return [x['classes'] for x in eval_results]
+
+	def accuracy(self, X, Y):
 		eval_input_fn = tf.estimator.inputs.numpy_input_fn(
 			x={'x': X},
 			y=Y,
@@ -230,11 +238,17 @@ if __name__ == '__main__':
 
 	args = parse_cmd_args()
 
-	model = CNN(args.lr, args.batch_size, args.init, args.save_dir,  20000)
+	model = CNN(args.lr, args.batch_size, args.init, args.save_dir,  50000)
 	
-	train, val, test = normalize_data('../data/', True)
+	train, val, test = normalize_data('../data/', False)
 
 	# model.run_save()
 	# val = normalize_data('../data/', '../data/val.csv')
-	print 'train:', model.fit(*train).predict(*train)
-	print 'val:', model.predict(*val)
+	print 'train:', model.fit(*train).accuracy(*train)
+	print 'val:', model.accuracy(*val)
+	val = normalize_data('../data/', True, '../data/test.csv', True)
+	rs = model.predict(val)
+	with open('../data/result.csv', 'w') as fp:
+		print >> fp, 'id,label'
+		for i, x in enumerate(rs):
+			print >> fp, '%d,%d' %(i,x)
