@@ -105,7 +105,8 @@ if __name__ == '__main__':
 	args = parse_cmd_args()
 
 	# Get train, val and test data
-	FIRST = False
+	FIRST =  False
+
 	if FIRST:
 		train, val, test = normalize_data('../data/')
 		np.save('train_x', train[0])
@@ -132,22 +133,23 @@ if __name__ == '__main__':
 
 	# Build objects
 	net = Net(initializer)
+	net.cuda()
 	optimizer = optim.Adam(net.parameters(), lr=args.lr)
 	criterion = nn.CrossEntropyLoss()
 
 
-	TRAIN = False
+	TRAIN =  True
 	if TRAIN:
 		x_train = train[0]
 		y_train = train[1]
 		# shuffle data
 
 		# Training Constants
-		num_epochs = 1
+		num_epochs = 5
 		bs = args.batch_size
 		xs = x_train.shape[0]
 		num_batches = 3
-		# num_batches = int(np.ceil(float(xs)/bs))
+		num_batches = int(np.ceil(float(xs)/bs))
 
 		"""
 			Training Phase
@@ -155,14 +157,17 @@ if __name__ == '__main__':
 		for epoch in tqdm(range(num_epochs)):
 			for i in tqdm(range(num_batches)):
 				x = np.reshape(x_train[i*bs:(i+1)*bs], (bs,1,28,28))
-				x = torch.from_numpy(x)
-				y = Variable(torch.from_numpy(np.array([y_train[i*bs:(i+1)*bs]]).reshape((20,))))
+				x = Variable(torch.from_numpy(x))
+				y = Variable(torch.from_numpy(np.array([y_train[i*bs:(i+1)*bs]]).reshape((bs,))))
+				x = x.cuda()
+				y = y.cuda()
 
 				optimizer.zero_grad()
-				output = net(Variable(x))
+				output = net(x)
 				loss = criterion(output, y)
 				loss.backward()
 				optimizer.step()
+			print("Loss %.4f"%loss.data[0])
 
 		# Save Model
 		torch.save(net.state_dict(), './net.pth')
@@ -183,9 +188,9 @@ if __name__ == '__main__':
 	for i in tqdm(range(y_val.shape[0])):
 		x = np.reshape(x_val[i], (1,1,28,28))
 		x = torch.from_numpy(x)
-		pred = net(Variable(x, volatile=True))
+		pred = net(Variable(x, volatile=True).cuda())
 		pred = pred.data.cpu().numpy()
 		if np.argmax(pred) == y_val[i]:
 			correct += 1
 
-	print float(correct) / y_val.shape[0]
+	print (float(correct) / y_val.shape[0])
