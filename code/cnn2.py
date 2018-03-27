@@ -101,12 +101,19 @@ class Net(nn.Module):
 """
 if __name__ == '__main__':
 
+	"""
+		CONFIG vars
+	"""
+	FIRST =  False
+	USE_CUDA = True
+	TRAIN =  True
+	NUM_EPOCHS = 5
+
 	# Parse cmdline args
 	args = parse_cmd_args()
 
-	# Get train, val and test data
-	FIRST =  False
 
+	# Get train, val and test data
 	if FIRST:
 		train, val, test = normalize_data('../data/')
 		np.save('train_x', train[0])
@@ -133,22 +140,22 @@ if __name__ == '__main__':
 
 	# Build objects
 	net = Net(initializer)
-	net.cuda()
+	if USE_CUDA:
+		net.cuda()
 	optimizer = optim.Adam(net.parameters(), lr=args.lr)
 	criterion = nn.CrossEntropyLoss()
 
 
-	TRAIN =  True
 	if TRAIN:
 		x_train = train[0]
 		y_train = train[1]
-		# shuffle data
+
+		# shuffle data here
 
 		# Training Constants
-		num_epochs = 5
+		num_epochs = NUM_EPOCHS
 		bs = args.batch_size
 		xs = x_train.shape[0]
-		num_batches = 3
 		num_batches = int(np.ceil(float(xs)/bs))
 
 		"""
@@ -159,14 +166,17 @@ if __name__ == '__main__':
 				x = np.reshape(x_train[i*bs:(i+1)*bs], (bs,1,28,28))
 				x = Variable(torch.from_numpy(x))
 				y = Variable(torch.from_numpy(np.array([y_train[i*bs:(i+1)*bs]]).reshape((bs,))))
-				x = x.cuda()
-				y = y.cuda()
+
+				if USE_CUDA:
+					x = x.cuda()
+					y = y.cuda()
 
 				optimizer.zero_grad()
 				output = net(x)
 				loss = criterion(output, y)
 				loss.backward()
 				optimizer.step()
+
 			print("Loss %.4f"%loss.data[0])
 
 		# Save Model
@@ -187,8 +197,12 @@ if __name__ == '__main__':
 	y_val = val[1]
 	for i in tqdm(range(y_val.shape[0])):
 		x = np.reshape(x_val[i], (1,1,28,28))
-		x = torch.from_numpy(x)
-		pred = net(Variable(x, volatile=True).cuda())
+		x = Variable(torch.from_numpy(x), volatile=True)
+		
+		if USE_CUDA:
+			x = x.cuda()
+
+		pred = net(x)
 		pred = pred.data.cpu().numpy()
 		if np.argmax(pred) == y_val[i]:
 			correct += 1
