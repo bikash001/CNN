@@ -59,6 +59,7 @@ class Net(nn.Module):
 		self.conv4 = nn.Conv2d(256,256,3,padding=1)
 		self.fc1 = nn.Linear(256*3*3, 1024)
 		self.fc2 = nn.Linear(1024, 1024)
+		self.bn = nn.BatchNorm1d(1024)
 		self.fc3 = nn.Linear(1024, 10)
 
 	def forward(self, x):
@@ -70,6 +71,7 @@ class Net(nn.Module):
 		x = F.relu(self.fc1(x))
 		x = F.relu(self.fc2(x))
 		# Batch Normalization Layer
+		x = self.bn(x)
 		x = F.softmax(self.fc3(x))
 		
 		return x
@@ -81,26 +83,70 @@ class Net(nn.Module):
 			nf *= s
 		return nf
 
-		
-if __name__ == '__main__':
+def xavier_init_weights(m):
+	nn.init.xavier_normal(m.weight) 
+	m.bias.data.fill_(0.01)
 
+def he_init_weights(m):
+	nn.init.kaiming_normal(m.weight) 
+	m.bias.data.fill_(0.01)	
+
+"""
+	Main 
+"""
+if __name__ == '__main__':
+	# torch.set_default_tensor_type('torch.cuda.FloatTensor')
+
+	# Parse cmdline args
 	args = parse_cmd_args()
 
-	train, val, test = normalize_data('../data/')
+	# Get train, val and test data
+	# train, val, test = normalize_data('../data/', scaled=True)
+	# np.save('train_x', train[0])
+	# np.save('train_y', train[1])
+	# np.save('val_x', val[0])
+	# np.save('val_y', val[1])
+	# np.save('test_x', test)
+	train = (np.load('train_x.npy'), np.load('train_y.npy'))
+	val = (np.load('val_x.npy'), np.load('val_y.npy'))
+	test = np.load('test_x.npy')
+
 	print("Data Normalization Complete!")
 
+	# Build objects
 	net = Net()
-	optimizer = optim.SGD(net.parameters(), lr=args.lr)
+	# net.cuda()
+	optimizer = optim.Adam(net.parameters(), lr=args.lr)
 	criterion = nn.CrossEntropyLoss()
-	num_epochs = 1
 
-	x_train = train[0][:500,:]
-	y_train = train[1][:500]
+	# Network Initialization
+	# if args.init == 1:
+	# 	net.apply(xavier_init_weights)
+	# elif args.init == 2:
+	# 	net.apply(he_init_weights)
+	# else:
+	# 	raise NotImplementedError
+
+	# Training Constants
+	num_epochs = 1
+	bs = args.batch_size
+
+	x_train = train[0]
+	y_train = train[1]
+	# shuffle data
+
+	xs = x_train.shape[0]
+	num_batches = int(np.ceil(float(xs)/bs))
+
+
+	"""
+		Training Phase
+	"""
 	for epoch in tqdm(range(num_epochs)):
-		for i in tqdm(range(y_train.shape[0])):
-			x = np.reshape(x_train[i], (1,1,28,28))
+		for i in tqdm(range(2)):
+			x = np.reshape(x_train[i*bs:(i+1)*bs], (bs,1,28,28))
 			x = torch.from_numpy(x)
-			y = Variable(torch.from_numpy(np.array([y_train[i]])))
+			y = Variable(torch.from_numpy(np.array([y_train[i*bs:(i+1)*bs]]).reshape((20,))))
 
 			optimizer.zero_grad()
 			output = net(Variable(x))
@@ -108,6 +154,10 @@ if __name__ == '__main__':
 			loss.backward()
 			optimizer.step()
 
+
+	"""
+		Test Phase
+	"""
 	correct = 0
 	x_val = val[0]
 	y_val = val[1]
