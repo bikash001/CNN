@@ -9,6 +9,7 @@
 import numpy as np
 from argparse import ArgumentParser
 from tqdm import tqdm
+import os
 
 # PyTorch Imports
 import torch
@@ -105,8 +106,8 @@ if __name__ == '__main__':
 		CONFIG vars
 	"""
 	FIRST =  False
-	USE_CUDA = True
-	TRAIN =  True
+	USE_CUDA = False
+	TRAIN =  False
 	NUM_EPOCHS = 5
 
 	# Parse cmdline args
@@ -190,7 +191,7 @@ if __name__ == '__main__':
 	net.eval()
 
 	"""
-		Test Phase
+		Eval Phase
 	"""
 	correct = 0
 	x_val = val[0]
@@ -208,3 +209,24 @@ if __name__ == '__main__':
 			correct += 1
 
 	print (float(correct) / y_val.shape[0])
+
+	"""
+		Test Phase
+	"""
+	results = [['id', 'label']]
+	for i, x in tqdm(enumerate(test)):
+		x = np.reshape(x, (1,1,28,28))
+		x = Variable(torch.from_numpy(x), volatile=True)
+		if USE_CUDA:
+			x = x.cuda()
+
+		pred = net(x)
+		pred = pred.data.cpu().numpy()
+		results.append([i, int(np.argmax(pred))])
+
+	dir_name = args.save_dir
+	if not os.path.isdir(dir_name):
+		os.makedirs(dir_name)
+	if dir_name[-1] != '/':
+		dir_name = dir_name+'/'
+	np.savetxt(dir_name+'test_submission.csv', np.array(results, np.str), '%s', ',')
