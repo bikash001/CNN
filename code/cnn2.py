@@ -243,7 +243,7 @@ if __name__ == '__main__':
 			loss_data.append([loss.data[0], vloss.data[0]])
 			print("Loss %.4f %.4f" %(loss.data[0], vloss))
 
-		np.savetxt('loss.txt', np.array(loss_data), delimiter=',', fmt='%.6f')
+		np.savetxt('loss.csv', np.array(loss_data), delimiter=',', fmt='%.6f')
 		# Save Model
 		torch.save(net.state_dict(), args.save_dir)
 
