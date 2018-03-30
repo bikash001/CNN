@@ -35,8 +35,8 @@ def generate_augs(imgs, labels):
 	blurred = aug.augment_images(lib_friendly_x)
 
 	# edge detect
-	aug  = iaa.EdgeDetect(alpha=1.0)
-	edged = aug.augment_images(lib_friendly_x)
+	# aug  = iaa.EdgeDetect(alpha=1.0)
+	# edged = aug.augment_images(lib_friendly_x)
 
 	# Additive Gaussian Noise
 	aug = iaa.AdditiveGaussianNoise(scale=(0, 0.2*255))
@@ -47,12 +47,12 @@ def generate_augs(imgs, labels):
 	dropped = aug.augment_images(lib_friendly_x)
 
 	# affine scale
-	aug = iaa.Affine(scale=(0.5,1.2))
-	scaled = aug.augment_images(lib_friendly_x)
+	# aug = iaa.Affine(scale=(0.5,1.2))
+	# scaled = aug.augment_images(lib_friendly_x)
 
 	# affine translate
-	aug = iaa.Affine(translate_percent={"x":(-0.2,0.2), "y": (-0.2, 0.2)})
-	translated = aug.augment_images(lib_friendly_x)
+	# aug = iaa.Affine(translate_percent={"x":(-0.2,0.2), "y": (-0.2, 0.2)})
+	# translated = aug.augment_images(lib_friendly_x)
 
 	all_imgs = flipped + cped + blurred + edged + noised + dropped + scaled + translated
 	flattened_imgs = [np.reshape(img, (28,28)) for img in all_imgs]

@@ -27,12 +27,12 @@ def plot_filters(tensor, grid_cols=8):
 	fig = plt.figure(figsize=(num_rows, grid_cols))
 	for i in range(num_filters):
 		subfig = fig.add_subplot(num_rows, grid_cols, i+1)
-		subfig.imshow(tensor[i].reshape((3,3)), cmap='Greys')
+		subfig.imshow(tensor[i].reshape((3,3)), cmap='Greys', interpolation='none')
 		subfig.axis('off')
 		subfig.set_xticklabels([])
 		subfig.set_yticklabels([])
 
-	plt.subplots_adjust(wspace=0.1, hspace=0.1)
+	plt.subplots_adjust(wspace=0.3, hspace=0.3)
 	plt.show()
 
 
