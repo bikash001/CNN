@@ -259,6 +259,7 @@ if __name__ == '__main__':
 	print 'train:', model.fit(*train).accuracy(*train)
 	print 'val:', model.accuracy(*val)
 	# test = normalize_data('../data/', True, '../data/test.csv', True)
+
 	# rs = model.predict(test)
 	# with open('../data/result.csv', 'w') as fp:
 	# 	print >> fp, 'id,label'
