@@ -136,7 +136,8 @@ class CNN:
 
 		train_step = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(cross_entropy)
 		
-		self.predictor = tf.equal(tf.argmax(logits,1, output_type=tf.int32), self.y, name='predictor')
+		self.prediction = tf.argmax(logits,1, output_type=tf.int32)
+		self.predictor = tf.equal(self.prediction, self.y, name='predictor')
 		self.accuracy = tf.reduce_mean(tf.cast(self.predictor, tf.float32), name='accuracy')
 
 		sess = tf.Session()	
@@ -204,7 +205,7 @@ class CNN:
 		return ac
 
 	def predict(self, X):
-		dataset = tf.data.Dataset.from_tensor_slices((X,Y))
+		dataset = tf.data.Dataset.from_tensor_slices(X)
 		dataset = dataset.batch(100)
 		iterator = dataset.make_one_shot_iterator()
 		next_el = iterator.get_next()
@@ -216,8 +217,8 @@ class CNN:
 		with sess.as_default():
 			while True:
 				try:
-					test_x, test_y = sess.run(next_el)
-					a = self.predictor.eval(feed_dict={self.x: test_x, self.y: test_y, self.apply_dropout: False, self.is_training: False})
+					test_x = sess.run(next_el)
+					a = self.prediction.eval(feed_dict={self.x: test_x, self.apply_dropout: False, self.is_training: False})
 					# print(a.shape)
 					result = np.concatenate((result,a))
 				except tf.errors.OutOfRangeError:
@@ -382,13 +383,20 @@ def cnn(train, test, init_method=2, batch_size=10, lr=0.001, max_step=100, dropo
 if __name__ == '__main__':
 	# mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
 	# print mnist.train.labels.shape
-	train = (np.load('train_x.npy'), np.load('train_y.npy'))
-	val = (np.load('val_x.npy'), np.load('val_y.npy'))
-	# cnn(train, val, max_step=10000)
-	net = CNN(steps=100)
-	net.fit(train[0], train[1], val[0], val[1])
-	# print net.predict_score(val[0], val[1])
-	print 'testing......'
-	ar = net.predict(np.load('test_x.npy'))
-	np.save('test_result', ar)
-	print time.clock()
+	# base = '../data/'
+	# train = (np.load(base+'train_x.npy'), np.load(base+'train_y.npy'))
+	# val = (np.load(base+'val_x.npy'), np.load(base+'val_y.npy'))
+	# # cnn(train, val, max_step=10000)
+	# net = CNN(steps=100000)
+	# net.fit(train[0], train[1], val[0], val[1])
+	# # print net.predict_score(val[0], val[1])
+	# print 'testing......'
+	# ar = net.predict(np.load(base+'test_x.npy'))
+	# np.save('test_result', ar)
+	# print time.clock()
+
+	# ar = np.load('test_result.npy')
+	# with open('../data/result.csv', 'w') as f:
+	# 	print >> f, 'id,label'
+	# 	for i, val in enumerate(ar):
+	# 		print >> f, '%d,%d' %(i, val)
