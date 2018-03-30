@@ -248,17 +248,20 @@ if __name__ == '__main__':
 
 	args = parse_cmd_args()
 
-	model = CNN(args.lr, args.batch_size, args.init, args.save_dir,  30000)
+	model = CNN(args.lr, args.batch_size, args.init, args.save_dir,  10)
 	
-	train, val, test = normalize_data('../data/', scaled=True)
-
+	# train, val, test = normalize_data('../data/', scaled=True)
+	train = (np.load('train_x.npy'), np.load('train_y.npy'))
+	val = (np.load('val_x.npy'), np.load('val_y.npy'))
+	
 	# model.run_save()
 	# val = normalize_data('../data/', scaled=True, file='../data/val.csv')
 	print 'train:', model.fit(*train).accuracy(*train)
 	print 'val:', model.accuracy(*val)
 	# test = normalize_data('../data/', True, '../data/test.csv', True)
-	rs = model.predict(test)
-	with open('../data/result.csv', 'w') as fp:
-		print >> fp, 'id,label'
-		for i, x in enumerate(rs):
-			print >> fp, '%d,%d' %(i,x)
+
+	# rs = model.predict(test)
+	# with open('../data/result.csv', 'w') as fp:
+	# 	print >> fp, 'id,label'
+	# 	for i, x in enumerate(rs):
+	# 		print >> fp, '%d,%d' %(i,x)

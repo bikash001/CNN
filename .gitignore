@@ -108,3 +108,4 @@ ENV/
 */*.npy
 */*.csv
 */*.pth
+/code/*.npy
