@@ -9,6 +9,7 @@
 import numpy as np
 from argparse import ArgumentParser
 from tqdm import tqdm
+import os
 
 # PyTorch Imports
 import torch
@@ -49,9 +50,16 @@ def parse_cmd_args():
 	return args
 
 
+"""
+	CNN Network Class
+"""
 class Net(nn.Module):
 
-	def __init__(self):
+
+	"""
+		Declare Parameters		
+	"""
+	def __init__(self, initializer):
 		super(Net, self).__init__()
 		self.conv1 = nn.Conv2d(1,64,3,padding=1)
 		self.conv2 = nn.Conv2d(64,128,3,padding=1)
@@ -62,6 +70,13 @@ class Net(nn.Module):
 		self.bn = nn.BatchNorm1d(1024)
 		self.fc3 = nn.Linear(1024, 10)
 
+		for layer in [self.conv1, self.conv2, self.conv3, self.conv4, self.fc1, self.fc2, self.fc3]:
+			initializer(layer.weight)
+			layer.bias.data.fill_(0.01)
+
+	"""
+		Forward Propagate Input
+	"""
 	def forward(self, x):
 		x = F.max_pool2d(F.relu(self.conv1(x)), (2,2))
 		x = F.max_pool2d(F.relu(self.conv2(x)), (2,2))
@@ -70,10 +85,8 @@ class Net(nn.Module):
 		x = x.view(-1, self.num_flat_features(x))
 		x = F.relu(self.fc1(x))
 		x = F.relu(self.fc2(x))
-		# Batch Normalization Layer
 		x = self.bn(x)
 		x = F.softmax(self.fc3(x))
-		
 		return x
 
 	def num_flat_features(self, x):
@@ -83,90 +96,137 @@ class Net(nn.Module):
 			nf *= s
 		return nf
 
-def xavier_init_weights(m):
-	nn.init.xavier_normal(m.weight) 
-	m.bias.data.fill_(0.01)
-
-def he_init_weights(m):
-	nn.init.kaiming_normal(m.weight) 
-	m.bias.data.fill_(0.01)	
 
 """
 	Main 
 """
 if __name__ == '__main__':
-	# torch.set_default_tensor_type('torch.cuda.FloatTensor')
+
+	"""
+		CONFIG vars
+	"""
+	FIRST =  False
+	USE_CUDA = False
+	TRAIN =  False
+	NUM_EPOCHS = 5
 
 	# Parse cmdline args
 	args = parse_cmd_args()
 
+
 	# Get train, val and test data
-	# train, val, test = normalize_data('../data/', scaled=True)
-	# np.save('train_x', train[0])
-	# np.save('train_y', train[1])
-	# np.save('val_x', val[0])
-	# np.save('val_y', val[1])
-	# np.save('test_x', test)
-	train = (np.load('train_x.npy'), np.load('train_y.npy'))
-	val = (np.load('val_x.npy'), np.load('val_y.npy'))
-	test = np.load('test_x.npy')
+	if FIRST:
+		train, val, test = normalize_data('../data/')
+		np.save('train_x', train[0])
+		np.save('train_y', train[1])
+		np.save('val_x', val[0])
+		np.save('val_y', val[1])
+		np.save('test_x', test)
+	else:
+		train = (np.load('train_x.npy'), np.load('train_y.npy'))
+		val = (np.load('val_x.npy'), np.load('val_y.npy'))
+		test = np.load('test_x.npy')
 
 	print("Data Normalization Complete!")
 
+
+	# Find Initializer
+	if args.init == 1:
+		initializer = nn.init.xavier_normal
+	elif args.init == 2:
+		initializer = nn.init.kaiming_normal
+	else:
+		raise NotImplementedError
+
+
 	# Build objects
-	net = Net()
-	# net.cuda()
+	net = Net(initializer)
+	if USE_CUDA:
+		net.cuda()
 	optimizer = optim.Adam(net.parameters(), lr=args.lr)
 	criterion = nn.CrossEntropyLoss()
 
-	# Network Initialization
-	# if args.init == 1:
-	# 	net.apply(xavier_init_weights)
-	# elif args.init == 2:
-	# 	net.apply(he_init_weights)
-	# else:
-	# 	raise NotImplementedError
 
-	# Training Constants
-	num_epochs = 1
-	bs = args.batch_size
+	if TRAIN:
+		x_train = train[0]
+		y_train = train[1]
 
-	x_train = train[0]
-	y_train = train[1]
-	# shuffle data
+		# shuffle data here
 
-	xs = x_train.shape[0]
-	num_batches = int(np.ceil(float(xs)/bs))
+		# Training Constants
+		num_epochs = NUM_EPOCHS
+		bs = args.batch_size
+		xs = x_train.shape[0]
+		num_batches = int(np.ceil(float(xs)/bs))
 
+		"""
+			Training Phase
+		"""
+		for epoch in tqdm(range(num_epochs)):
+			for i in tqdm(range(num_batches)):
+				x = np.reshape(x_train[i*bs:(i+1)*bs], (bs,1,28,28))
+				x = Variable(torch.from_numpy(x))
+				y = Variable(torch.from_numpy(np.array([y_train[i*bs:(i+1)*bs]]).reshape((bs,))))
+
+				if USE_CUDA:
+					x = x.cuda()
+					y = y.cuda()
+
+				optimizer.zero_grad()
+				output = net(x)
+				loss = criterion(output, y)
+				loss.backward()
+				optimizer.step()
+
+			print("Loss %.4f"%loss.data[0])
+
+		# Save Model
+		torch.save(net.state_dict(), './net.pth')
+
+
+	# Load Model
+	net.load_state_dict(torch.load('./net.pth'))
+
+	# Switch Model to Eval Mode
+	net.eval()
 
 	"""
-		Training Phase
-	"""
-	for epoch in tqdm(range(num_epochs)):
-		for i in tqdm(range(2)):
-			x = np.reshape(x_train[i*bs:(i+1)*bs], (bs,1,28,28))
-			x = torch.from_numpy(x)
-			y = Variable(torch.from_numpy(np.array([y_train[i*bs:(i+1)*bs]]).reshape((20,))))
-
-			optimizer.zero_grad()
-			output = net(Variable(x))
-			loss = criterion(output, y)
-			loss.backward()
-			optimizer.step()
-
-
-	"""
-		Test Phase
+		Eval Phase
 	"""
 	correct = 0
 	x_val = val[0]
 	y_val = val[1]
-	for i in range(y_val.shape[0]):
+	for i in tqdm(range(y_val.shape[0])):
 		x = np.reshape(x_val[i], (1,1,28,28))
-		x = torch.from_numpy(x)
-		pred = net(Variable(x))
+		x = Variable(torch.from_numpy(x), volatile=True)
+		
+		if USE_CUDA:
+			x = x.cuda()
+
+		pred = net(x)
 		pred = pred.data.cpu().numpy()
 		if np.argmax(pred) == y_val[i]:
 			correct += 1
 
-	print float(correct) / y_val.shape[0]
+	print (float(correct) / y_val.shape[0])
+
+	"""
+		Test Phase
+	"""
+	results = [['id', 'label']]
+	for i, x in tqdm(enumerate(test)):
+		x = np.reshape(x, (1,1,28,28))
+		x = Variable(torch.from_numpy(x), volatile=True)
+		if USE_CUDA:
+			x = x.cuda()
+
+		pred = net(x)
+		pred = pred.data.cpu().numpy()
+		results.append([i, int(np.argmax(pred))])
+
+	dir_name = args.save_dir
+	if not os.path.isdir(dir_name):
+		os.makedirs(dir_name)
+	if dir_name[-1] != '/':
+		dir_name = dir_name+'/'
+	np.savetxt(dir_name+'test_submission.csv', np.array(results, np.str), '%s', ',')
