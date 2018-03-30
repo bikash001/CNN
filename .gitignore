@@ -105,3 +105,6 @@ ENV/
 /data/*
 /model/*
 /code/*.pkl
+*/*.npy
+*/*.csv
+*/*.pth
