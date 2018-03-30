@@ -101,6 +101,57 @@ class Net(nn.Module):
 		return nf
 
 
+
+"""
+	Eval Phase
+"""
+def predict_score(net, val, USE_CUDA=True):
+	# Switch Model to Eval Mode
+	net.eval()
+
+	correct = 0
+	x_val = val[0]
+	y_val = val[1]
+	for i in tqdm(range(y_val.shape[0])):
+		x = np.reshape(x_val[i], (1,1,28,28))
+		x = Variable(torch.from_numpy(x), volatile=True)
+		
+		if USE_CUDA:
+			x = x.cuda()
+
+		pred = net(x)
+		pred = pred.data.cpu().numpy()
+		if np.argmax(pred) == y_val[i]:
+			correct += 1
+
+	net.train()
+	print (float(correct) / y_val.shape[0])
+
+
+
+"""
+	Test Phase
+"""
+def save_test(net, test):
+	results = [['id', 'label']]
+	for i, x in tqdm(enumerate(test)):
+		x = np.reshape(x, (1,1,28,28))
+		x = Variable(torch.from_numpy(x), volatile=True)
+		if USE_CUDA:
+			x = x.cuda()
+
+		pred = net(x)
+		pred = pred.data.cpu().numpy()
+		results.append([i, int(np.argmax(pred))])
+
+	dir_name = args.save_dir
+	if not os.path.isdir(dir_name):
+		os.makedirs(dir_name)
+	if dir_name[-1] != '/':
+		dir_name = dir_name+'/'
+	np.savetxt(dir_name+'test_submission.csv', np.array(results, np.str), '%s', ',')
+
+
 """
 	Main 
 """
@@ -109,14 +160,13 @@ if __name__ == '__main__':
 	"""
 		CONFIG vars
 	"""
-	FIRST =  False
-	USE_CUDA = False
-	TRAIN =  False
-	NUM_EPOCHS = 5
+	FIRST = False
+	USE_CUDA = True
+	TRAIN =  True
+	NUM_EPOCHS = 25
 
 	# Parse cmdline args
 	args = parse_cmd_args()
-
 
 	# Get train, val and test data
 	if FIRST:
@@ -149,7 +199,7 @@ if __name__ == '__main__':
 		net.cuda()
 	optimizer = optim.Adam(net.parameters(), lr=args.lr)
 	criterion = nn.CrossEntropyLoss()
-
+	v_criterion = nn.CrossEntropyLoss()
 
 	if TRAIN:
 		x_train = train[0]
@@ -166,6 +216,7 @@ if __name__ == '__main__':
 		"""
 			Training Phase
 		"""
+		loss_data = []
 		for epoch in tqdm(range(num_epochs)):
 			for i in tqdm(range(num_batches)):
 				x = np.reshape(x_train[i*bs:(i+1)*bs], (bs,1,28,28))
@@ -182,55 +233,22 @@ if __name__ == '__main__':
 				loss.backward()
 				optimizer.step()
 
-			print("Loss %.4f"%loss.data[0])
+			vx = np.reshape(val[0], (None, 1, 28, 28))
+			vx = Variable(torch.from_numpy(vx))
+			vy = Variable(torch.from_numpy(np.array(val[1]).reshape((len(val[1],)))))
+			if USE_CUDA:
+				vx, vy = vx.cuda(), vy.cuda()
+			vo = net(vx)
+			vloss = v_criterion(vo, vy)
+			loss_data.append([loss.data[0], vloss.data[0]])
+			print("Loss %.4f %.4f" %(loss.data[0], vloss))
 
+		np.savetxt('loss.txt', np.array(loss_data), delimiter=',', fmt='%.6f')
 		# Save Model
-		torch.save(net.state_dict(), './net.pth')
+		torch.save(net.state_dict(), args.save_dir)
 
 
 	# Load Model
-	net.load_state_dict(torch.load('./net.pth'))
+	# net.load_state_dict(torch.load(args.save_dir))
 
-	# Switch Model to Eval Mode
-	net.eval()
-
-	"""
-		Eval Phase
-	"""
-	correct = 0
-	x_val = val[0]
-	y_val = val[1]
-	for i in tqdm(range(y_val.shape[0])):
-		x = np.reshape(x_val[i], (1,1,28,28))
-		x = Variable(torch.from_numpy(x), volatile=True)
-		
-		if USE_CUDA:
-			x = x.cuda()
-
-		pred = net(x)
-		pred = pred.data.cpu().numpy()
-		if np.argmax(pred) == y_val[i]:
-			correct += 1
-
-	print (float(correct) / y_val.shape[0])
-
-	"""
-		Test Phase
-	"""
-	results = [['id', 'label']]
-	for i, x in tqdm(enumerate(test)):
-		x = np.reshape(x, (1,1,28,28))
-		x = Variable(torch.from_numpy(x), volatile=True)
-		if USE_CUDA:
-			x = x.cuda()
-
-		pred = net(x)
-		pred = pred.data.cpu().numpy()
-		results.append([i, int(np.argmax(pred))])
-
-	dir_name = args.save_dir
-	if not os.path.isdir(dir_name):
-		os.makedirs(dir_name)
-	if dir_name[-1] != '/':
-		dir_name = dir_name+'/'
-	np.savetxt(dir_name+'test_submission.csv', np.array(results, np.str), '%s', ',')
+	
